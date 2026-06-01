@@ -1,5 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using TraderDashboard.Application.Interfaces;
+using TraderDashboard.Application.Services;
 using TraderDashboard.Infrastructure.Data;
+using TraderDashboard.Infrastructure.Repositories;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +11,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Repositories
+builder.Services.AddScoped<ITradeRepository, TradeRepository>();
+builder.Services.AddScoped<IStrategyRepository, StrategyRepository>();
+builder.Services.AddScoped<IUploadLogRepository, UploadLogRepository>();
+
+// Services
+builder.Services.AddScoped<TradeService>();
 
 // Database
 builder.Services.AddDbContext<AppDbContext>(options =>
