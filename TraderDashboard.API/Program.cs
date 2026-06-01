@@ -19,6 +19,10 @@ builder.Services.AddScoped<IUploadLogRepository, UploadLogRepository>();
 
 // Services
 builder.Services.AddScoped<TradeService>();
+builder.Services.AddScoped<CsvParserService>();
+builder.Services.AddScoped<UploadService>();
+builder.Services.AddScoped<AnalyticsService>();
+builder.Services.AddScoped<BehaviourAnalyticsService>();
 
 // Database
 builder.Services.AddDbContext<AppDbContext>(options =>
