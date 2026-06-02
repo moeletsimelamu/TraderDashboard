@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ApiService } from '../../services/api.service';
 import { UploadResult } from '../../models/analytics.model';
 import { NavigationService } from '../../services/navigation.service';
@@ -79,7 +80,13 @@ import { NavigationService } from '../../services/navigation.service';
       <!-- Upload History -->
       <div class="card history-card">
         <div class="history-title">Upload History</div>
-        <div class="table-wrap">
+
+        <div class="loading-state" *ngIf="isLoadingLogs">
+          <div class="spinner"></div>
+          <span class="loading-text">Loading history...</span>
+        </div>
+
+        <div class="table-wrap" *ngIf="!isLoadingLogs">
           <table *ngIf="logs.length > 0">
             <thead>
               <tr>
@@ -140,54 +147,18 @@ import { NavigationService } from '../../services/navigation.service';
         box-shadow: var(--glow-amber);
       }
 
-      &.uploading {
-        border-color: var(--accent-blue);
-        pointer-events: none;
-      }
+      &.uploading { border-color: var(--accent-blue); pointer-events: none; }
     }
 
-    .drop-icon {
-      font-size: 2.5rem;
-      color: var(--accent-amber);
-      margin-bottom: 0.75rem;
-      line-height: 1;
-    }
-
-    .drop-title {
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      margin-bottom: 0.35rem;
-    }
-
-    .drop-sub {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
+    .drop-icon { font-size: 2.5rem; color: var(--accent-amber); margin-bottom: 0.75rem; line-height: 1; }
+    .drop-title { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.35rem; }
+    .drop-sub { font-size: 12px; color: var(--text-muted); }
 
     .result-card { margin-bottom: 1rem; }
-
-    .result-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1.25rem;
-    }
-
+    .result-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
     .result-title { font-weight: 700; font-size: 15px; }
-
-    .result-stats {
-      display: flex;
-      gap: 2rem;
-      margin-bottom: 1rem;
-    }
-
-    .stat {
-      display: flex;
-      flex-direction: column;
-      gap: 0.2rem;
-    }
-
+    .result-stats { display: flex; gap: 2rem; margin-bottom: 1rem; }
+    .stat { display: flex; flex-direction: column; gap: 0.2rem; }
     .stat-value { font-size: 1.5rem; font-weight: 500; }
     .stat-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; }
 
@@ -196,13 +167,7 @@ import { NavigationService } from '../../services/navigation.service';
 
     .format-card { margin-bottom: 1rem; }
     .format-title { font-weight: 700; font-size: 15px; margin-bottom: 0.75rem; }
-
-    .columns-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-
+    .columns-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
     .col-tag {
       background: var(--bg-secondary);
       border: 1px solid var(--border);
@@ -213,9 +178,7 @@ import { NavigationService } from '../../services/navigation.service';
     }
 
     .history-title { font-weight: 700; font-size: 15px; margin-bottom: 1rem; }
-
     .table-wrap { overflow-x: auto; }
-
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th {
       padding: 0.6rem 0.75rem;
@@ -233,13 +196,15 @@ import { NavigationService } from '../../services/navigation.service';
       color: var(--text-data);
     }
     tr:last-child td { border-bottom: none; }
-
     .empty-state { color: var(--text-muted); font-size: 13px; padding: 1rem 0; }
   `]
 })
 export class UploadComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
+
   isDragging = false;
   isUploading = false;
+  isLoadingLogs = true;
   lastResult: UploadResult | null = null;
   logs: UploadResult[] = [];
 
@@ -255,8 +220,15 @@ export class UploadComponent implements OnInit {
   ngOnInit(): void {
     this.nav.onNavigateTo('upload', () => this.loadLogs());
   }
+
   loadLogs(): void {
-    this.api.getUploadLogs().subscribe(logs => this.logs = logs);
+    this.isLoadingLogs = true;
+    this.api.getUploadLogs()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(logs => {
+        this.logs = logs;
+        this.isLoadingLogs = false;
+      });
   }
 
   onDragOver(event: DragEvent): void {

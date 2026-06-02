@@ -1,6 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ApiService } from '../../services/api.service';
 import { Trade } from '../../models/trade.model';
 import { NavigationService } from '../../services/navigation.service';
@@ -18,89 +19,99 @@ import { NavigationService } from '../../services/navigation.service';
         </div>
       </header>
 
-      <!-- Filters -->
-      <div class="card filters-bar">
-        <input
-          class="filter-input"
-          type="text"
-          placeholder="Search instrument, strategy, session..."
-          [(ngModel)]="searchTerm"
-          (ngModelChange)="applyFilters()"
-        />
-        <select class="filter-select" [(ngModel)]="directionFilter" (ngModelChange)="applyFilters()">
-          <option value="">All Directions</option>
-          <option value="Long">Long</option>
-          <option value="Short">Short</option>
-        </select>
-        <select class="filter-select" [(ngModel)]="resultFilter" (ngModelChange)="applyFilters()">
-          <option value="">All Results</option>
-          <option value="win">Wins</option>
-          <option value="loss">Losses</option>
-          <option value="breakeven">Breakeven</option>
-        </select>
-        <button class="btn-clear" (click)="clearFilters()">Clear</button>
+      <!-- Loading State -->
+      <div class="loading-state" *ngIf="isLoading">
+        <div class="spinner"></div>
+        <span class="loading-text">Loading trades...</span>
       </div>
 
-      <!-- Table -->
-      <div class="card table-card">
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Instrument</th>
-                <th>Direction</th>
-                <th>Entry</th>
-                <th>Exit</th>
-                <th>Risk</th>
-                <th>P&L</th>
-                <th>RR</th>
-                <th>Strategy</th>
-                <th>Session</th>
-                <th>Duration</th>
-                <th>Override</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let trade of filtered" [class.row-win]="trade.pnL > 0" [class.row-loss]="trade.pnL < 0">
-                <td class="mono">{{ trade.tradeDate }}</td>
-                <td class="bold">{{ trade.instrument }}</td>
-                <td>
-                  <span class="tag" [class.tag-green]="trade.direction === 'Long'" [class.tag-red]="trade.direction === 'Short'">
-                    {{ trade.direction }}
-                  </span>
-                </td>
-                <td class="mono">{{ trade.entryPrice | number:'1.2-5' }}</td>
-                <td class="mono">{{ trade.exitPrice | number:'1.2-5' }}</td>
-                <td class="mono">{{ trade.riskAmount | number:'1.2-2' }}</td>
-                <td class="mono" [class.text-green]="trade.pnL > 0" [class.text-red]="trade.pnL < 0">
-                  {{ trade.pnL >= 0 ? '+' : '' }}{{ trade.pnL | number:'1.2-2' }}
-                </td>
-                <td class="mono" [class.text-green]="trade.rR >= 1" [class.text-red]="trade.rR < 0">
-                  {{ trade.rR | number:'1.2-2' }}R
-                </td>
-                <td>
-                  <span class="tag tag-blue" *ngIf="trade.strategyName">{{ trade.strategyName }}</span>
-                  <span class="text-muted" *ngIf="!trade.strategyName">—</span>
-                </td>
-                <td>{{ trade.session }}</td>
-                <td class="mono">{{ trade.tradeDuration }}m</td>
-                <td>
-                  <span class="tag tag-amber" *ngIf="trade.isManualOverride">Yes</span>
-                  <span class="text-muted" *ngIf="!trade.isManualOverride">—</span>
-                </td>
-                <td>
-                  <button class="btn-delete" (click)="deleteTrade(trade.id)">✕</button>
-                </td>
-              </tr>
-              <tr *ngIf="filtered.length === 0">
-                <td colspan="13" class="empty-state">No trades found.</td>
-              </tr>
-            </tbody>
-          </table>
+      <ng-container *ngIf="!isLoading">
+
+        <!-- Filters -->
+        <div class="card filters-bar">
+          <input
+            class="filter-input"
+            type="text"
+            placeholder="Search instrument, strategy, session..."
+            [(ngModel)]="searchTerm"
+            (ngModelChange)="applyFilters()"
+          />
+          <select class="filter-select" [(ngModel)]="directionFilter" (ngModelChange)="applyFilters()">
+            <option value="">All Directions</option>
+            <option value="Long">Long</option>
+            <option value="Short">Short</option>
+          </select>
+          <select class="filter-select" [(ngModel)]="resultFilter" (ngModelChange)="applyFilters()">
+            <option value="">All Results</option>
+            <option value="win">Wins</option>
+            <option value="loss">Losses</option>
+            <option value="breakeven">Breakeven</option>
+          </select>
+          <button class="btn-clear" (click)="clearFilters()">Clear</button>
         </div>
-      </div>
+
+        <!-- Table -->
+        <div class="card table-card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Instrument</th>
+                  <th>Direction</th>
+                  <th>Entry</th>
+                  <th>Exit</th>
+                  <th>Risk</th>
+                  <th>P&L</th>
+                  <th>RR</th>
+                  <th>Strategy</th>
+                  <th>Session</th>
+                  <th>Duration</th>
+                  <th>Override</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let trade of filtered" [class.row-win]="trade.pnL > 0" [class.row-loss]="trade.pnL < 0">
+                  <td class="mono">{{ trade.tradeDate }}</td>
+                  <td class="bold">{{ trade.instrument }}</td>
+                  <td>
+                    <span class="tag" [class.tag-green]="trade.direction === 'Long'" [class.tag-red]="trade.direction === 'Short'">
+                      {{ trade.direction }}
+                    </span>
+                  </td>
+                  <td class="mono">{{ trade.entryPrice | number:'1.2-5' }}</td>
+                  <td class="mono">{{ trade.exitPrice | number:'1.2-5' }}</td>
+                  <td class="mono">{{ trade.riskAmount | number:'1.2-2' }}</td>
+                  <td class="mono" [class.text-green]="trade.pnL > 0" [class.text-red]="trade.pnL < 0">
+                    {{ trade.pnL >= 0 ? '+' : '' }}{{ trade.pnL | number:'1.2-2' }}
+                  </td>
+                  <td class="mono" [class.text-green]="trade.rR >= 1" [class.text-red]="trade.rR < 0">
+                    {{ trade.rR | number:'1.2-2' }}R
+                  </td>
+                  <td>
+                    <span class="tag tag-blue" *ngIf="trade.strategyName">{{ trade.strategyName }}</span>
+                    <span class="text-muted" *ngIf="!trade.strategyName">—</span>
+                  </td>
+                  <td>{{ trade.session }}</td>
+                  <td class="mono">{{ trade.tradeDuration }}m</td>
+                  <td>
+                    <span class="tag tag-amber" *ngIf="trade.isManualOverride">Yes</span>
+                    <span class="text-muted" *ngIf="!trade.isManualOverride">—</span>
+                  </td>
+                  <td>
+                    <button class="btn-delete" (click)="deleteTrade(trade.id)">✕</button>
+                  </td>
+                </tr>
+                <tr *ngIf="filtered.length === 0">
+                  <td colspan="13" class="empty-state">No trades found.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </ng-container>
     </div>
   `,
   styles: [`
@@ -108,11 +119,7 @@ import { NavigationService } from '../../services/navigation.service';
 
     .page-header {
       margin-bottom: 1.5rem;
-      h1 {
-        font-family: var(--font-display);
-        font-size: 1.75rem;
-        font-weight: 800;
-      }
+      h1 { font-family: var(--font-display); font-size: 1.75rem; font-weight: 800; }
     }
 
     .filters-bar {
@@ -165,18 +172,11 @@ import { NavigationService } from '../../services/navigation.service';
     }
 
     .table-card { padding: 0; overflow: hidden; }
-
     .table-wrap { overflow-x: auto; }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
 
-    thead tr {
-      border-bottom: 1px solid var(--border);
-    }
+    thead tr { border-bottom: 1px solid var(--border); }
 
     th {
       padding: 0.75rem 1rem;
@@ -205,7 +205,6 @@ import { NavigationService } from '../../services/navigation.service';
 
     .row-win td:first-child { border-left: 2px solid var(--accent-green); }
     .row-loss td:first-child { border-left: 2px solid var(--accent-red); }
-
     .bold { font-weight: 600; color: var(--text-primary); }
 
     .btn-delete {
@@ -229,11 +228,14 @@ import { NavigationService } from '../../services/navigation.service';
   `]
 })
 export class TradesComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
+
   trades: Trade[] = [];
   filtered: Trade[] = [];
   searchTerm = '';
   directionFilter = '';
   resultFilter = '';
+  isLoading = true;
 
   constructor(private api: ApiService, private nav: NavigationService) {}
 
@@ -242,10 +244,14 @@ export class TradesComponent implements OnInit {
   }
 
   loadData(): void {
-    this.api.getTrades().subscribe(trades => {
-      this.trades = trades;
-      this.filtered = trades;
-    });
+    this.isLoading = true;
+    this.api.getTrades()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(trades => {
+        this.trades = trades;
+        this.filtered = trades;
+        this.isLoading = false;
+      });
   }
 
   applyFilters(): void {

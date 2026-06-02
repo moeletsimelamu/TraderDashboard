@@ -21,8 +21,14 @@ import { CommonModule } from '@angular/common';
           <li><a routerLink="/behaviour" routerLinkActive="active"><span class="nav-icon">◉</span> Behaviour</a></li>
         </ul>
         <div class="sidebar-footer">
-          <div class="user-info mono" *ngIf="auth.getUser()">
-            {{ auth.getUser()?.displayName }}
+          <div class="user-row" *ngIf="auth.getUser()">
+            <div class="user-avatar">
+              {{ auth.getUser()?.displayName?.charAt(0)?.toUpperCase() }}
+            </div>
+            <div class="user-details">
+              <div class="user-name">{{ auth.getUser()?.displayName }}</div>
+              <div class="user-email mono">{{ auth.getUser()?.email }}</div>
+            </div>
           </div>
           <button class="btn-logout" (click)="auth.logout()">Sign out</button>
         </div>
@@ -89,6 +95,43 @@ import { CommonModule } from '@angular/common';
       text-align: left;
       transition: all 0.15s;
       &:hover { border-color: var(--accent-red); color: var(--accent-red); }
+    }
+    .user-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .user-avatar {
+      width: 28px;
+      height: 28px;
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-amber);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .user-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-email {
+      font-size: 10px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   `]
 })
