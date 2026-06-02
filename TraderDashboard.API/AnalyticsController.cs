@@ -1,45 +1,51 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using TraderDashboard.Application.Services;
 
 namespace TraderDashboard.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class AnalyticsController : ControllerBase
 {
     private readonly AnalyticsService _analyticsService;
     private readonly BehaviourAnalyticsService _behaviourService;
-    private const int DevUserId = 1;
+    private readonly JwtService _jwtService;
 
     public AnalyticsController(
         AnalyticsService analyticsService,
-        BehaviourAnalyticsService behaviourService)
+        BehaviourAnalyticsService behaviourService,
+        JwtService jwtService)
     {
         _analyticsService = analyticsService;
         _behaviourService = behaviourService;
+        _jwtService = jwtService;
     }
+
+    private int GetUserId() => _jwtService.GetUserIdFromToken(User)!.Value;
 
     [HttpGet("summary")]
     public async Task<IActionResult> GetSummary() =>
-        Ok(await _analyticsService.GetSummaryAsync(DevUserId));
+        Ok(await _analyticsService.GetSummaryAsync(GetUserId()));
 
     [HttpGet("equity-curve")]
     public async Task<IActionResult> GetEquityCurve() =>
-        Ok(await _analyticsService.GetEquityCurveAsync(DevUserId));
+        Ok(await _analyticsService.GetEquityCurveAsync(GetUserId()));
 
     [HttpGet("by-strategy")]
     public async Task<IActionResult> GetByStrategy() =>
-        Ok(await _analyticsService.GetStrategyPerformanceAsync(DevUserId));
+        Ok(await _analyticsService.GetStrategyPerformanceAsync(GetUserId()));
 
     [HttpGet("by-day")]
     public async Task<IActionResult> GetByDay() =>
-        Ok(await _analyticsService.GetPerformanceByDayAsync(DevUserId));
+        Ok(await _analyticsService.GetPerformanceByDayAsync(GetUserId()));
 
     [HttpGet("by-session")]
     public async Task<IActionResult> GetBySession() =>
-        Ok(await _analyticsService.GetPerformanceBySessionAsync(DevUserId));
+        Ok(await _analyticsService.GetPerformanceBySessionAsync(GetUserId()));
 
     [HttpGet("behaviour")]
     public async Task<IActionResult> GetBehaviour() =>
-        Ok(await _behaviourService.GetBehaviourSummaryAsync(DevUserId));
+        Ok(await _behaviourService.GetBehaviourSummaryAsync(GetUserId()));
 }

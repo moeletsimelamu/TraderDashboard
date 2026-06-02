@@ -1,10 +1,12 @@
 import { Component } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { AuthService } from './services/auth.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule],
   template: `
     <div class="shell">
       <nav class="sidebar">
@@ -13,28 +15,17 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
           <span class="logo-text">Trader<br><strong>Analytics</strong></span>
         </div>
         <ul class="nav-links">
-          <li>
-            <a routerLink="/dashboard" routerLinkActive="active">
-              <span class="nav-icon">◈</span> Dashboard
-            </a>
-          </li>
-          <li>
-            <a routerLink="/trades" routerLinkActive="active">
-              <span class="nav-icon">◎</span> Trades
-            </a>
-          </li>
-          <li>
-            <a routerLink="/upload" routerLinkActive="active">
-              <span class="nav-icon">⊕</span> Upload
-            </a>
-          </li>
-          <li>
-            <a routerLink="/behaviour" routerLinkActive="active">
-              <span class="nav-icon">◉</span> Behaviour
-            </a>
-          </li>
+          <li><a routerLink="/dashboard" routerLinkActive="active"><span class="nav-icon">◈</span> Dashboard</a></li>
+          <li><a routerLink="/trades" routerLinkActive="active"><span class="nav-icon">◎</span> Trades</a></li>
+          <li><a routerLink="/upload" routerLinkActive="active"><span class="nav-icon">⊕</span> Upload</a></li>
+          <li><a routerLink="/behaviour" routerLinkActive="active"><span class="nav-icon">◉</span> Behaviour</a></li>
         </ul>
-        <div class="sidebar-footer mono">v1.0.0</div>
+        <div class="sidebar-footer">
+          <div class="user-info mono" *ngIf="auth.getUser()">
+            {{ auth.getUser()?.displayName }}
+          </div>
+          <button class="btn-logout" (click)="auth.logout()">Sign out</button>
+        </div>
       </nav>
       <main class="content">
         <router-outlet />
@@ -74,10 +65,33 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
     .nav-links a.active { color: var(--accent-amber); background: rgba(245,158,11,0.08); }
     .nav-icon { font-size: 16px; color: var(--text-muted); }
     .sidebar-footer {
-      padding: 1rem 1.5rem 0; color: var(--text-muted);
-      font-size: 11px; border-top: 1px solid var(--border-subtle);
+      padding: 1rem 1.25rem 0;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
     }
-    .content { flex: 1; overflow-y: auto; padding: 2rem; }
+    .user-info {
+      font-size: 11px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .btn-logout {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.4rem 0.75rem;
+      color: var(--text-muted);
+      font-size: 12px;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s;
+      &:hover { border-color: var(--accent-red); color: var(--accent-red); }
+    }
   `]
 })
-export class AppComponent {}
+export class AppComponent {
+  constructor(public auth: AuthService) {}
+}
